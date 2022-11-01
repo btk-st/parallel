@@ -6,9 +6,9 @@
 //mpiexec mpi -n 5 matrixA.txt matrixB.txt matrixC.txt
 //A: nxm, B: mxp, C: nxp
 int main(int argc, char **argv) {
-    int size = -1, rank = -1;
+    int size = NULL, rank = NULL;
     int *matA = NULL, *matB = NULL, *matC = NULL;
-    int *bufRowA = NULL;
+    int *bufRowA = NULL, *bufRowC = NULL;
     int n = NULL, m = NULL, p = NULL;
 
     MPI_Init(&argc, &argv);
@@ -63,40 +63,76 @@ int main(int argc, char **argv) {
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&p, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    //1 строка матрицы A
-    bufRowA = (int *) malloc(m * sizeof(int));
     //разошлем матрицу B на все процессы
     if (rank != 0) {
         matB = (int *) malloc(m * p * sizeof(int));
     }
     MPI_Bcast(matB, m * p, MPI_INT, 0, MPI_COMM_WORLD);
-    //буферная строка C
-    int *bufRowC = (int *) malloc(p * sizeof(int));
 
+    //число строк на процесс
+    int rows_per_process;
+    int rows_in_last_process;
+    //если делятся нацело - распределяем равномерно
+    if (n % size == 0) {
+        rows_per_process = n / size;
+        rows_in_last_process = rows_per_process;
+    } else {
+        //если нет, то последний процесс получает меньшее число строк на обработку
+        rows_per_process = n / (size-1);
+        rows_in_last_process = n - (size - 1) * rows_per_process;
+    }
+
+    int processRows;
+    //выделим память под буферную строку с учетом номера процесса
+    if (rank == size - 1) {
+        processRows = rows_in_last_process;
+    } else {
+        processRows = rows_per_process;
+    }
+    bufRowC = (int *) malloc(p * processRows * sizeof(int));
+    bufRowA = (int *) malloc(m * processRows * sizeof(int));
+
+
+    printf("%d: rows_in_last:%d, rows_per_process: %d,  processRows=%d", rank, rows_in_last_process, rows_per_process,processRows);
 
     //распределим строки по процессам
-    MPI_Scatter(matA, m, MPI_INT, bufRowA, m, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(matA, processRows * m, MPI_INT, bufRowA, processRows * m, MPI_INT, 0, MPI_COMM_WORLD);
+//    printf("\nfirst row element: %d", bufRowA[0]);
     //считаем одну из строк итоговой матрицы
     int sum = 0;
-    for (int i = 0; i < p; i++) { //по столбцам B
-        for (int j = 0; j < m; j++) { //по столбцам bufA
-            sum += bufRowA[j] * matB[i + j * p];
+    for (int rowA = 0; rowA < processRows; rowA++) //по строкам bufA
+        for (int i = 0; i < p; i++) { //по столбцам B
+            for (int j = 0; j < m; j++) { //по столбцам bufA
+                sum += bufRowA[rowA * m + j] * matB[i + j * p];
+            }
+            bufRowC[rowA * p + i] = sum;
+            sum = 0;
         }
-        bufRowC[i] = sum;
-        sum = 0;
-    }
     //собираем результат вычислений
-    MPI_Gather(bufRowC, p, MPI_INT, matC, p, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(bufRowC, processRows*p, MPI_INT, matC, processRows*p, MPI_INT, 0, MPI_COMM_WORLD);
 
 
     MPI_Finalize();
 
     if (rank == 0) {
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < p; j++) {
-                printf(" %d", matC[i*n+j]);
+//        for (int i = 0; i < n; i++) {
+//            for (int j = 0; j < p; j++) {
+//                printf(" %d", matC[i*n+j]);
+//            }
+//            printf("\n");
+//        }
+        //save C to file
+        FILE *f1;
+        f1=fopen("matrixC.txt","w");
+        fprintf(f1,"%d %d\n", n, p);
+        for (int i=0;i<n;i++)
+        {
+            for (int j=0;j<p;j++)
+            {
+                fprintf(f1,"%d ", matC[i*p+j]);
             }
-            printf("\n");
+            fprintf(f1,"\n");
         }
+        fclose(f1);
     }
 }
