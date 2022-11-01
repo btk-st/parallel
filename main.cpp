@@ -4,8 +4,10 @@
 
 //ограничение: число процессов <= числу строк в матрице А
 //mpiexec mpi -n 5 matrixA.txt matrixB.txt matrixC.txt
+//не работает если число строк в последнем процессе > чем в остальных
 //A: nxm, B: mxp, C: nxp
 int main(int argc, char **argv) {
+    double tstart=NULL, tfinish=NULL;
     int size = NULL, rank = NULL;
     int *matA = NULL, *matB = NULL, *matC = NULL;
     int *bufRowA = NULL, *bufRowC = NULL;
@@ -59,6 +61,7 @@ int main(int argc, char **argv) {
         //результирующая матрица C
         matC = (int *) malloc(n * p * sizeof(int));
     }
+    tstart = MPI_Wtime();
     //отправим другим процессам информацию про размеры матриц
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -93,7 +96,7 @@ int main(int argc, char **argv) {
     bufRowA = (int *) malloc(m * processRows * sizeof(int));
 
 
-    printf("%d: rows_in_last:%d, rows_per_process: %d,  processRows=%d", rank, rows_in_last_process, rows_per_process,processRows);
+//    printf("%d: rows_in_last:%d, rows_per_process: %d,  processRows=%d", rank, rows_in_last_process, rows_per_process,processRows);
 
     //распределим строки по процессам
     MPI_Scatter(matA, processRows * m, MPI_INT, bufRowA, processRows * m, MPI_INT, 0, MPI_COMM_WORLD);
@@ -111,10 +114,11 @@ int main(int argc, char **argv) {
     //собираем результат вычислений
     MPI_Gather(bufRowC, processRows*p, MPI_INT, matC, processRows*p, MPI_INT, 0, MPI_COMM_WORLD);
 
-
+    tfinish = MPI_Wtime();
     MPI_Finalize();
 
     if (rank == 0) {
+        printf("%f %f %f", tstart, tfinish, tfinish-tstart);
 //        for (int i = 0; i < n; i++) {
 //            for (int j = 0; j < p; j++) {
 //                printf(" %d", matC[i*n+j]);

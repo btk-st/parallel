@@ -1,5 +1,5 @@
 import numpy as np
-size = (50, 200)
+size = (1000, 500)
 filename = 'matrixB.txt'
 arr2 = np.matrix(np.random.randint(-50,50,size = size))
 
