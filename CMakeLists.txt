@@ -7,6 +7,6 @@ find_package(MPI REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(mpi main.cpp)
+add_executable(mpi mpi.cpp)
 # Add libraries for code completion and compiling
 target_link_libraries(mpi PUBLIC MPI::MPI_CXX)
