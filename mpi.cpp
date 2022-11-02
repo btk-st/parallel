@@ -7,7 +7,7 @@
 //не работает если число строк в последнем процессе > чем в остальных
 //A: nxm, B: mxp, C: nxp
 int main(int argc, char **argv) {
-    double tstart=NULL, tfinish=NULL;
+    double tstart = NULL, tfinish = NULL;
     int size = NULL, rank = NULL;
     int *matA = NULL, *matB = NULL, *matC = NULL;
     int *bufRowA = NULL, *bufRowC = NULL;
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
         rows_in_last_process = rows_per_process;
     } else {
         //если нет, то последний процесс получает меньшее число строк на обработку
-        rows_per_process = n / (size-1);
+        rows_per_process = n / (size - 1);
         rows_in_last_process = n - (size - 1) * rows_per_process;
     }
 
@@ -112,13 +112,13 @@ int main(int argc, char **argv) {
             sum = 0;
         }
     //собираем результат вычислений
-    MPI_Gather(bufRowC, processRows*p, MPI_INT, matC, processRows*p, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(bufRowC, processRows * p, MPI_INT, matC, processRows * p, MPI_INT, 0, MPI_COMM_WORLD);
 
     tfinish = MPI_Wtime();
     MPI_Finalize();
 
     if (rank == 0) {
-        printf("%f %f %f", tstart, tfinish, tfinish-tstart);
+        printf("%f %f %f", tstart, tfinish, tfinish - tstart);
 //        for (int i = 0; i < n; i++) {
 //            for (int j = 0; j < p; j++) {
 //                printf(" %d", matC[i*n+j]);
@@ -127,15 +127,13 @@ int main(int argc, char **argv) {
 //        }
         //save C to file
         FILE *f1;
-        f1=fopen("matrixC.txt","w");
-        fprintf(f1,"%d %d\n", n, p);
-        for (int i=0;i<n;i++)
-        {
-            for (int j=0;j<p;j++)
-            {
-                fprintf(f1,"%d ", matC[i*p+j]);
+        f1 = fopen("matrixC.txt", "w");
+        fprintf(f1, "%d %d\n", n, p);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < p; j++) {
+                fprintf(f1, "%d ", matC[i * p + j]);
             }
-            fprintf(f1,"\n");
+            fprintf(f1, "\n");
         }
         fclose(f1);
     }
